@@ -1,0 +1,130 @@
+﻿@inherits LayoutComponentBase
+@inject IHttpClientFactory HttpClientFactory
+@inject Glosso.Services.UserService UserService
+@inject Glosso.Services.AuthStateService AuthStateService
+@inject NavigationManager NavigationManager
+@using System.Text.Json
+@using Glosso.Controllers
+
+<div class="page">
+    <div class="sidebar">
+        <NavMenu />
+    </div>
+
+    <main>
+        <div class="top-row px-4 d-flex justify-content-between">
+            <a href="https://learn.microsoft.com/aspnet/core/" target="_blank">Docs</a>
+
+            <div class="dropdown">
+                <button class="btn btn-outline-primary dropdown-toggle" type="button" id="accountDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                    Account
+                </button>
+                <ul class="dropdown-menu dropdown-menu-end p-4" aria-labelledby="accountDropdown">
+                    <form @onsubmit="HandleLogin" method="post">
+                        <h5>Login</h5>
+                        <div class="mb-3">
+                            <label for="usernameInput" class="form-label">Username</label>
+                            <InputText class="form-control" id="usernameInput" @bind-Value="Username" placeholder="Enter username" />
+                        </div>
+                        <div class="mb-3">
+                            <label for="passwordInput" class="form-label">Password</label>
+                            <InputText class="form-control" id="passwordInput" @bind-Value="Password" type="password" placeholder="Enter password" />
+                        </div>
+                        <button type="submit" class="btn btn-primary w-100">Login</button>
+                        @if (!string.IsNullOrEmpty(ErrorMessage))
+                        {
+                            <div class="mt-2 text-danger">@ErrorMessage</div>
+                        }
+                        <div class="mt-2 text-center">
+                            <a href="/register">Don't have an account? Register</a>
+                        </div>
+                    </form>
+                </ul>
+            </div>
+        </div>
+
+        <article class="content px-4">
+            @Body
+        </article>
+    </main>
+</div>
+
+<div id="blazor-error-ui">
+    An unhandled error has occurred.
+    <a href="" class="reload">Reload</a>
+    <a class="dismiss">🗙</a>
+</div>
+
+@code {
+    private string Username { get; set; }
+    private string Password { get; set; }
+    private string ErrorMessage { get; set; }
+    private string AntiforgeryToken { get; set; } // Store antiforgery token
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Retrieve the antiforgery token when the component initializes
+        await RetrieveAntiforgeryToken();
+    }
+
+    private async Task RetrieveAntiforgeryToken()
+    {
+        try
+        {
+            var httpClient = HttpClientFactory.CreateClient("GlossoClient");
+            var response = await httpClient.GetAsync("api/auth/tokens");
+            response.EnsureSuccessStatusCode();
+            var tokenResponse = await response.Content.ReadFromJsonAsync<TokenResponse>();
+            AntiforgeryToken = tokenResponse.RequestToken; // Store the retrieved token
+        }
+        catch (HttpRequestException httpEx)
+        {
+            ErrorMessage = "An error occurred while connecting to the API: " + httpEx.Message;
+            Console.WriteLine(ErrorMessage); // For debugging
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage = "An unexpected error occurred: " + ex.Message;
+            Console.WriteLine(ErrorMessage); // For debugging
+        }
+    }
+
+    private async Task HandleLogin()
+    {
+        ErrorMessage = null; // Reset error message
+        try
+        {
+            // Ensure that the antiforgery token is set
+            if (string.IsNullOrEmpty(AntiforgeryToken))
+            {
+                await RetrieveAntiforgeryToken();
+            }
+
+            bool loginSuccess = await UserService.Login(Username, Password, AntiforgeryToken); // Pass the token
+
+            if (loginSuccess)
+            {
+                Console.WriteLine("Login successful");
+                NavigationManager.NavigateTo("/"); // Redirect to home or desired page after login
+            }
+            else
+            {
+                Console.WriteLine("Login failed");
+                ErrorMessage = "Invalid username or password. Please try again.";
+            }
+
+            StateHasChanged(); // Refresh UI to reflect changes
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage = "An error occurred during login: " + ex.Message;
+            Console.WriteLine(ErrorMessage); // For debugging
+        }
+    }
+
+    // Token response model for deserialization
+    private class TokenResponse
+    {
+        public string RequestToken { get; set; }
+    }
+}

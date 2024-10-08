@@ -1,0 +1,81 @@
+@page "/register"
+@inject Glosso.Services.UserService UserService
+@inject NavigationManager NavigationManager
+@rendermode InteractiveServer
+@using System.Diagnostics
+@using Glosso.Models
+
+<h3>Register</h3>
+
+<EditForm Model="@registerModel" OnValidSubmit="HandleRegister" FormName="RegisterForm">
+    <DataAnnotationsValidator />
+    <ValidationSummary />
+
+    <div class="mb-3">
+        <label>Username:</label>
+        <InputText @bind-Value="registerModel.Username" class="form-control" />
+        <ValidationMessage For="@(() => registerModel.Username)" />
+    </div>
+
+    <div class="mb-3">
+        <label>Password:</label>
+        <InputText @bind-Value="registerModel.Password" Type="password" class="form-control" />
+        <ValidationMessage For="@(() => registerModel.Password)" />
+    </div>
+
+    <div class="mb-3">
+        <label>Email:</label>
+        <InputText @bind-Value="registerModel.Email" class="form-control" />
+        <ValidationMessage For="@(() => registerModel.Email)" />
+    </div>
+
+    <div class="mb-3">
+        <label>First Name:</label>
+        <InputText @bind-Value="registerModel.FirstName" class="form-control" />
+        <ValidationMessage For="@(() => registerModel.FirstName)" />
+    </div>
+
+    <div class="mb-3">
+        <label>Last Name:</label>
+        <InputText @bind-Value="registerModel.LastName" class="form-control" />
+        <ValidationMessage For="@(() => registerModel.LastName)" />
+    </div>
+
+    <div class="mb-3">
+        <label>Date of Birth:</label>
+        <InputDate @bind-Value="registerModel.DateOfBirth" class="form-control" />
+        <ValidationMessage For="@(() => registerModel.DateOfBirth)" />
+    </div>
+
+    <button type="submit" class="btn btn-primary">Register</button>
+
+    @if (!string.IsNullOrEmpty(errorMessage))
+    {
+        <p style="color:red;">@errorMessage</p>
+    }
+</EditForm>
+
+@code {
+    private User registerModel = new User();
+    private string errorMessage;
+
+    private async Task HandleRegister()
+    {
+        Debug.WriteLine($"Username: {registerModel.Username}");
+        Debug.WriteLine($"Email: {registerModel.Email}");
+        Debug.WriteLine($"First Name: {registerModel.FirstName}");
+        Debug.WriteLine($"Last Name: {registerModel.LastName}");
+        Debug.WriteLine($"Date of Birth: {registerModel.DateOfBirth}");
+        Debug.WriteLine($"Password: {registerModel.Password}");
+        var result = await UserService.RegisterUser(registerModel);
+        if (result == null)
+        {
+            errorMessage = "Registration failed. Username or email may already be in use.";
+        }
+        else
+        {
+            // Redirect to the homepage after successful registration
+            NavigationManager.NavigateTo("/");
+        }
+    }
+}

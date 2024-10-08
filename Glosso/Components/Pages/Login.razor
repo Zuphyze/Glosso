@@ -1,0 +1,54 @@
+@page "/login"
+@inject HttpClient HttpClient // Inject HttpClient
+@using Glosso.Controllers
+
+@code {
+    private string Username { get; set; }
+    private string Password { get; set; }
+    private string ErrorMessage { get; set; }
+    private string AntiforgeryToken { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Get the antiforgery token from the API
+        var response = await HttpClient.GetAsync("api/auth/tokens");
+        if (response.IsSuccessStatusCode)
+        {
+            var tokenResponse = await response.Content.ReadFromJsonAsync<TokenResponse>();
+            AntiforgeryToken = tokenResponse.RequestToken;
+        }
+        else
+        {
+            ErrorMessage = "Could not retrieve antiforgery token.";
+        }
+    }
+
+    private async Task HandleLogin()
+    {
+        var loginModel = new LoginModel
+        {
+            Username = Username,
+            Password = Password,
+            AntiforgeryToken = AntiforgeryToken // Include the token in the login model
+        };
+
+        var response = await HttpClient.PostAsJsonAsync("api/auth/login", loginModel);
+
+        if (response.IsSuccessStatusCode)
+        {
+            // Handle successful login
+            var token = await response.Content.ReadAsStringAsync();
+            // Store the token in local storage or in-memory storage if needed
+        }
+        else
+        {
+            ErrorMessage = "Invalid login attempt.";
+        }
+    }
+
+    // Token response model for deserialization
+    private class TokenResponse
+    {
+        public string RequestToken { get; set; }
+    }
+}
